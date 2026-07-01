@@ -4,7 +4,7 @@ import {
   ArrowUpRight, Download, History, BarChart3, Tag, Warehouse,
   Activity, ShieldCheck, Zap, Layers, Microscope, QrCode, Trash2,
   Database, Boxes, Thermometer, Beaker, TrendingUp, Calendar, MapPin, X,
-  ClipboardList, ArrowRight, Printer, CheckCircle2, Sliders, RefreshCw, AlertCircle
+  ClipboardList, ArrowRight, Printer, CheckCircle2, Sliders, RefreshCw, AlertCircle, Edit, Save
 } from 'lucide-react';
 import { useERPData } from '../hooks/useERPData';
 import { cn, formatCurrency } from '../lib/utils';
@@ -40,6 +40,7 @@ export const Inventory: React.FC = () => {
   const [batch, setBatch] = useState('');
   const [submitError, setSubmitError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingProcureId, setEditingProcureId] = useState<string | null>(null);
 
   // Cell Grading Form States
   const [isGradingModalOpen, setIsGradingModalOpen] = useState(false);
@@ -52,6 +53,7 @@ export const Inventory: React.FC = () => {
   const [cellTemp, setCellTemp] = useState(24.5);
   const [qcEngineer, setQcEngineer] = useState(user?.name || 'Suresh P.');
   const [gradingSuccess, setGradingSuccess] = useState('');
+  const [editingGradedId, setEditingGradedId] = useState<string | null>(null);
 
   // Warehouse Transfer States
   const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
@@ -158,7 +160,13 @@ export const Inventory: React.FC = () => {
         unit
       };
 
-      if (procureType === 'existing') {
+      if (editingProcureId) {
+        payload.existingItemId = editingProcureId;
+        payload.setExactQty = true;
+        payload.name = newName;
+        payload.code = newCode;
+        payload.category = newCategory;
+      } else if (procureType === 'existing') {
         payload.existingItemId = selectedExistingId;
       } else {
         payload.name = newName;
@@ -178,6 +186,7 @@ export const Inventory: React.FC = () => {
 
       await refetch();
       setIsProcureModalOpen(false);
+      setEditingProcureId(null);
       setQty(0);
       setNewName('');
       setNewCode('');
@@ -189,6 +198,40 @@ export const Inventory: React.FC = () => {
       setSubmitError(err.message || 'Error executing procurement REST transaction.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleStartEditProcurement = (item: any) => {
+    setEditingProcureId(item.id);
+    setProcureType('new');
+    setNewName(item.name || '');
+    setNewCode(item.code || '');
+    setNewCategory(item.category || 'Cells');
+    setQty(item.qty || 0);
+    setUnit(item.unit || 'Kg');
+    setSupplier(item.supplier || '');
+    setWarehouse(item.warehouse || 'Raw Hub');
+    setRack(item.rack || 'A-1');
+    setPrice(item.price || 0);
+    setGrn(item.grn || '');
+    setBatch(item.batch || '');
+    setSubmitError('');
+    setIsProcureModalOpen(true);
+  };
+
+  const handleDeleteProcurement = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this raw material/inventory item?')) return;
+    try {
+      const res = await fetch(`/api/inventory/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        await refetch();
+      } else {
+        alert('Failed to delete inventory item.');
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -216,38 +259,89 @@ export const Inventory: React.FC = () => {
     }
 
     try {
-      const parentItem = data?.inventory.find((i: any) => i.id === gradingParentId);
-      const res = await fetch('/api/cells/grade', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          parentId: gradingParentId,
-          cellData: {
-            serial: cellSerial.toUpperCase(),
-            name: `${parentItem?.name || 'Prismatic Cell'} (Graded)`,
-            grade: finalGrade,
-            voltage: cellVoltage,
-            ir: cellIR,
-            capacity: cellCapacity,
-            cycleCount: cellCycleCount,
-            temp: cellTemp,
-            engineer: qcEngineer,
-            usage,
-            supplier: parentItem?.supplier || 'Arcenol Depot'
-          }
-        })
-      });
+      let res;
+      if (editingGradedId) {
+        res = await fetch(`/api/cells/grade/${editingGradedId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cellData: {
+              serial: cellSerial.toUpperCase(),
+              grade: finalGrade,
+              voltage: cellVoltage,
+              ir: cellIR,
+              capacity: cellCapacity,
+              cycleCount: cellCycleCount,
+              temp: cellTemp,
+              engineer: qcEngineer,
+              usage
+            }
+          })
+        });
+      } else {
+        const parentItem = data?.inventory.find((i: any) => i.id === gradingParentId);
+        res = await fetch('/api/cells/grade', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            parentId: gradingParentId,
+            cellData: {
+              serial: cellSerial.toUpperCase(),
+              name: `${parentItem?.name || 'Prismatic Cell'} (Graded)`,
+              grade: finalGrade,
+              voltage: cellVoltage,
+              ir: cellIR,
+              capacity: cellCapacity,
+              cycleCount: cellCycleCount,
+              temp: cellTemp,
+              engineer: qcEngineer,
+              usage,
+              supplier: parentItem?.supplier || 'Arcenol Depot'
+            }
+          })
+        });
+      }
 
       if (!res.ok) throw new Error('Error saving cell data to graded vault.');
       
-      setGradingSuccess(`SUCCESS: Registered Node ${cellSerial} as Grade ${finalGrade} (${usage})`);
+      setGradingSuccess(editingGradedId ? `SUCCESS: Updated graded cell ${cellSerial}` : `SUCCESS: Registered Node ${cellSerial} as Grade ${finalGrade} (${usage})`);
       setCellSerial('');
+      setEditingGradedId(null);
       refetch();
       setTimeout(() => setGradingSuccess(''), 4000);
     } catch (err: any) {
       setSubmitError(err.message || 'Execution error');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleStartEditGraded = (item: any) => {
+    setEditingGradedId(item.id);
+    setCellSerial(item.serial || '');
+    setCellVoltage(item.voltage || 3.2);
+    setCellIR(item.ir || 7.5);
+    setCellCapacity(item.capacity || 6000);
+    setCellCycleCount(item.cycleCount || 0);
+    setCellTemp(item.temp || 24.5);
+    setQcEngineer(item.engineer || user?.name || 'Suresh P.');
+    setSubmitError('');
+    setIsGradingModalOpen(true);
+  };
+
+  const handleDeleteGraded = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this graded cell record? The parent stock quantity will be returned.')) return;
+    try {
+      const res = await fetch(`/api/cells/grade/${id}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        await refetch();
+      } else {
+        alert('Failed to delete cell grading record.');
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -1341,15 +1435,15 @@ export const Inventory: React.FC = () => {
                 </div>
                 <div className="text-left">
                   <h3 className="text-2xl md:text-3xl font-black font-sans text-slate-900 uppercase tracking-tight italic flex items-center gap-1">
-                    INVENTORY PROCUREMENT ENTRY PLATE
+                    {editingProcureId ? "EDIT PROCUREMENT ENTRY" : "INVENTORY PROCUREMENT ENTRY PLATE"}
                   </h3>
                   <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1 font-sans">
-                    LOG RAW ARRIVAL MATERIALS OR REGISTER NEW CELL CODES INTO THE CENTRAL NODE
+                    {editingProcureId ? "MODIFY REQUISITION DETAILS AND MATERIAL SPECIFICATIONS" : "LOG RAW ARRIVAL MATERIALS OR REGISTER NEW CELL CODES INTO THE CENTRAL NODE"}
                   </p>
                 </div>
               </div>
               <button 
-                onClick={() => setIsProcureModalOpen(false)} 
+                onClick={() => { setIsProcureModalOpen(false); setEditingProcureId(null); }} 
                 className="p-3 hover:bg-slate-100 rounded-xl transition-all text-slate-400 hover:text-slate-800 cursor-pointer border border-transparent hover:border-slate-200"
                 id="close-procure-modal-top"
               >
@@ -1624,6 +1718,7 @@ export const Inventory: React.FC = () => {
                           <th className="px-6 py-4.5">CODE / BATCH</th>
                           <th className="px-6 py-4.5 text-right w-24">QTY</th>
                           <th className="px-6 py-4.5 text-right pr-6">VALUATION (₹)</th>
+                          <th className="px-6 py-4.5 text-center w-28">ACTIONS</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
@@ -1665,12 +1760,30 @@ export const Inventory: React.FC = () => {
                                   ₹{item.price || 0}/{item.unit || 'Kg'}
                                 </span>
                               </td>
+                              <td className="px-6 py-5.5 text-center">
+                                <div className="flex items-center justify-center space-x-2">
+                                  <button
+                                    onClick={() => handleStartEditProcurement(item)}
+                                    className="p-1.5 text-[#0c9bbc] hover:bg-cyan-50 rounded-lg transition-all cursor-pointer"
+                                    title="Edit Procurement Record"
+                                  >
+                                    <Edit size={14} />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteProcurement(item.id)}
+                                    className="p-1.5 text-red-550 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                                    title="Delete Procurement Record"
+                                  >
+                                    <Trash2 size={14} />
+                                  </button>
+                                </div>
+                              </td>
                             </tr>
                           );
                         })}
                         {filteredProcureItems.length === 0 && (
                           <tr>
-                            <td colSpan={4} className="px-6 py-20 text-center font-sans">
+                            <td colSpan={5} className="px-6 py-20 text-center font-sans">
                               <Boxes className="mx-auto text-slate-200 mb-4 animate-pulse" size={42} />
                               <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
                                 NO MATCHING INTERNAL STOCK FINDINGS.
@@ -1685,11 +1798,10 @@ export const Inventory: React.FC = () => {
               </div>
             </div>
 
-            {/* Bottom Actions Plate */}
-            <div className="p-8 px-10 border-t border-slate-150 bg-slate-50 flex justify-end space-x-4 shrink-0">
+                         <div className="p-8 px-10 border-t border-slate-150 bg-slate-50 flex justify-end space-x-4 shrink-0">
               <button
                 type="button"
-                onClick={() => setIsProcureModalOpen(false)}
+                onClick={() => { setIsProcureModalOpen(false); setEditingProcureId(null); }}
                 className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-8 py-4 rounded-xl text-xs font-extrabold uppercase tracking-widest transition-colors cursor-pointer"
                 id="dismiss-procure-modal"
               >
@@ -1703,7 +1815,7 @@ export const Inventory: React.FC = () => {
                 className="bg-[#009dbb] hover:bg-[#0487a2] text-white px-8 py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50 shadow-md shadow-[#009dbb]/25 cursor-pointer"
                 id="commit-procure-modal"
               >
-                {isSubmitting ? "SYNCING TRANSACTION..." : "COMMIT REST ENTRY"}
+                {isSubmitting ? "SYNCING TRANSACTION..." : editingProcureId ? "SAVE CHANGES" : "COMMIT REST ENTRY"}
               </button>
             </div>
 
@@ -1724,15 +1836,15 @@ export const Inventory: React.FC = () => {
                 </div>
                 <div className="text-left">
                   <h3 className="text-2xl md:text-3xl font-black font-sans text-slate-900 uppercase tracking-tight italic flex items-center">
-                    QUALITY CONTROL CELL GRADING PANEL
+                    {editingGradedId ? "EDIT CELL GRADING RECORD" : "QUALITY CONTROL CELL GRADING PANEL"}
                   </h3>
                   <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1 font-sans">
-                    LOG CELL SPECS TO AUTOMATICALLY MATCH GRADE A, B, C OR REJECT SCRAP CATEGORIES
+                    {editingGradedId ? "MODIFY SPECIMEN METRICS AND CALIBRATE ASSIGNED GRADE" : "LOG CELL SPECS TO AUTOMATICALLY MATCH GRADE A, B, C OR REJECT SCRAP CATEGORIES"}
                   </p>
                 </div>
               </div>
               <button 
-                onClick={() => setIsGradingModalOpen(false)} 
+                onClick={() => { setIsGradingModalOpen(false); setEditingGradedId(null); }} 
                 className="p-3 hover:bg-slate-100 rounded-xl transition-all text-slate-400 hover:text-slate-800 cursor-pointer border border-transparent hover:border-slate-200"
                 id="close-grading-modal"
               >
@@ -1916,6 +2028,7 @@ export const Inventory: React.FC = () => {
                           <th className="px-6 py-4.5">CAPACITY</th>
                           <th className="px-6 py-4.5">ASSIGNED GRADE</th>
                           <th className="px-6 py-4.5 text-right pr-6">QC INSPECTOR</th>
+                          <th className="px-6 py-4.5 text-center w-28">ACTIONS</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-mono">
@@ -1952,11 +2065,31 @@ export const Inventory: React.FC = () => {
                             <td className="px-6 py-5.5 text-right pr-6 font-sans text-xs font-extrabold text-slate-500 uppercase leading-snug">
                               {cell.engineer || cell.inspector || "SURESH P."}
                             </td>
+                            <td className="px-6 py-5.5 text-center">
+                              <div className="flex items-center justify-center space-x-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleStartEditGraded(cell)}
+                                  className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-all cursor-pointer"
+                                  title="Edit Graded Cell"
+                                >
+                                  <Edit size={14} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteGraded(cell.id)}
+                                  className="p-1.5 text-red-550 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                                  title="Delete Graded Cell"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </td>
                           </tr>
                         ))}
                         {filteredGradingItems.length === 0 && (
                           <tr>
-                            <td colSpan={6} className="px-6 py-20 text-center font-sans">
+                            <td colSpan={7} className="px-6 py-20 text-center font-sans">
                               <Microscope className="mx-auto text-slate-200 mb-4 animate-pulse" size={42} />
                               <p className="text-xs font-black text-slate-400 uppercase tracking-widest">
                                 NO GRADED CELL SPECIMENS REGISTERED YET.
@@ -1975,7 +2108,7 @@ export const Inventory: React.FC = () => {
             <div className="p-8 px-10 border-t border-slate-150 bg-slate-50 flex justify-end space-x-4 shrink-0">
               <button
                 type="button"
-                onClick={() => setIsGradingModalOpen(false)}
+                onClick={() => { setIsGradingModalOpen(false); setEditingGradedId(null); }}
                 className="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-8 py-4 rounded-xl text-xs font-extrabold uppercase tracking-widest transition-colors cursor-pointer"
                 id="dismiss-grading-modal"
               >
@@ -1989,7 +2122,7 @@ export const Inventory: React.FC = () => {
                 className="bg-emerald-600 hover:bg-emerald-700 text-white px-8 py-4 rounded-xl text-xs font-black uppercase tracking-widest transition-all disabled:opacity-50 shadow-md shadow-emerald-600/25 cursor-pointer"
                 id="commit-grading-modal"
               >
-                {isSubmitting ? "AUTHORIZING..." : "AUTHORIZE & GRADE CELL"}
+                {isSubmitting ? "AUTHORIZING..." : editingGradedId ? "SAVE CHANGES" : "AUTHORIZE & GRADE CELL"}
               </button>
             </div>
 

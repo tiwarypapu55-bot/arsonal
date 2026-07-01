@@ -25,6 +25,9 @@ import {
   FlaskConical,
   ClipboardCheck,
   ArrowRight,
+  Edit,
+  Trash2,
+  X,
 } from "lucide-react";
 import { useERPData } from "../hooks/useERPData";
 import { useAuthStore, UserRole } from "../store/authStore";
@@ -73,6 +76,53 @@ export const Production: React.FC = () => {
   const [isCreatingStage, setIsCreatingStage] = useState(false);
 
   const [selectedWipCommitments, setSelectedWipCommitments] = useState<any | null>(null);
+
+  const [editingWipId, setEditingWipId] = useState<string | null>(null);
+  const [editingWipName, setEditingWipName] = useState("");
+  const [editingWipQty, setEditingWipQty] = useState<number>(0);
+
+  const handleStartEditWip = (item: any) => {
+    setEditingWipId(item.id);
+    setEditingWipName(item.name);
+    setEditingWipQty(item.qty);
+  };
+
+  const handleSaveWipEdit = async (id: string) => {
+    try {
+      const res = await fetch(`/api/production/wip/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editingWipName,
+          qty: editingWipQty
+        })
+      });
+      if (res.ok) {
+        setEditingWipId(null);
+        refetch();
+      } else {
+        alert("Failed to save WIP updates");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleDeleteWip = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this WIP run? Raw materials reserved will be returned to stock.")) return;
+    try {
+      const res = await fetch(`/api/production/wip/${id}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        refetch();
+      } else {
+        alert("Failed to delete WIP batch.");
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const stagesList: string[] = data?.wipStages || ["WELDING", "BMS_MOUNTING", "TESTING", "CASING", "GRADING", "QUALITY_CHECK"];
 
@@ -418,76 +468,138 @@ export const Production: React.FC = () => {
                     <th className="px-10 py-8">Process Stage</th>
                     <th className="px-10 py-8 text-center">Unit Count</th>
                     <th className="px-10 py-8">Last Node Update</th>
-                    <th className="px-10 py-8 text-right">Commitments</th>
+                    <th className="px-10 py-8 text-right">Commitments & Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {wipInventory.map((item: any) => (
-                    <tr
-                      key={item.id}
-                      className="hover:bg-slate-50 transition-all group duration-300"
-                    >
-                      <td className="px-10 py-8">
-                        <p className="text-[16px] font-black text-slate-900 uppercase tracking-tighter group-hover:text-primary-600 transition-colors leading-none">
-                          {item.name}
-                        </p>
-                        <p className="text-[9px] text-slate-400 font-black uppercase mt-3 tracking-widest italic">
-                          {item.id}
-                        </p>
-                      </td>
-                      <td className="px-10 py-8">
-                        {isAdmin ? (
-                          <div className="relative inline-block">
-                            <select
-                              value={item.stage}
-                              onChange={async (e) => {
-                                const nextStage = e.target.value;
-                                await fetch("/api/production/wip/update-stage", {
-                                  method: "POST",
-                                  headers: { "Content-Type": "application/json" },
-                                  body: JSON.stringify({ wipId: item.id, stage: nextStage })
-                                });
-                                refetch();
-                              }}
-                              className="bg-primary-50 hover:bg-primary-100 text-primary-600 border border-primary-100 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest cursor-pointer outline-none transition-all mr-1 pr-8 appearance-none shadow-xs font-mono"
-                            >
-                              {stagesList.map((stg: string) => (
-                                <option key={stg} value={stg} className="bg-white text-slate-900 font-mono">
-                                  {stg.replace(/_/g, ' ')}
-                                </option>
-                              ))}
-                            </select>
-                            <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-primary-600 font-extrabold leading-none">
-                              ▼
+                  {wipInventory.map((item: any) => {
+                    const isEditing = editingWipId === item.id;
+                    return (
+                      <tr
+                        key={item.id}
+                        className="hover:bg-slate-50 transition-all group duration-300"
+                      >
+                        <td className="px-10 py-8">
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              value={editingWipName}
+                              onChange={(e) => setEditingWipName(e.target.value)}
+                              className="bg-slate-50 border border-slate-300 px-3 py-1.5 rounded-lg text-xs font-black font-sans text-slate-800 outline-none w-full uppercase"
+                            />
+                          ) : (
+                            <>
+                              <p className="text-[16px] font-black text-slate-900 uppercase tracking-tighter group-hover:text-primary-600 transition-colors leading-none">
+                                {item.name}
+                              </p>
+                              <p className="text-[9px] text-slate-400 font-black uppercase mt-3 tracking-widest italic">
+                                {item.id}
+                              </p>
+                            </>
+                          )}
+                        </td>
+                        <td className="px-10 py-8">
+                          {isAdmin ? (
+                            <div className="relative inline-block">
+                              <select
+                                value={item.stage}
+                                onChange={async (e) => {
+                                  const nextStage = e.target.value;
+                                  await fetch("/api/production/wip/update-stage", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ wipId: item.id, stage: nextStage })
+                                  });
+                                  refetch();
+                                }}
+                                className="bg-primary-50 hover:bg-primary-100 text-primary-600 border border-primary-100 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest cursor-pointer outline-none transition-all mr-1 pr-8 appearance-none shadow-xs font-mono"
+                              >
+                                {stagesList.map((stg: string) => (
+                                  <option key={stg} value={stg} className="bg-white text-slate-900 font-mono">
+                                    {stg.replace(/_/g, ' ')}
+                                  </option>
+                                ))}
+                              </select>
+                              <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[9px] text-primary-600 font-extrabold leading-none">
+                                ▼
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="bg-primary-50 text-primary-600 border border-primary-100 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center w-fit">
+                              <div className="h-1.5 w-1.5 rounded-full bg-primary-600 animate-pulse mr-2"></div>
+                              {item.stage}
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-10 py-8 text-center">
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              value={editingWipQty}
+                              onChange={(e) => setEditingWipQty(Number(e.target.value))}
+                              className="bg-slate-50 border border-slate-300 px-3 py-1.5 rounded-lg text-xs font-black font-mono text-slate-800 outline-none w-24 text-center"
+                            />
+                          ) : (
+                            <span className="text-2xl font-black text-slate-900 italic tracking-tighter">
+                              {item.qty}
                             </span>
+                          )}
+                        </td>
+                        <td className="px-10 py-8">
+                          <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center">
+                            <History size={14} className="mr-2 text-slate-300" />{" "}
+                            {item.lastUpdate}
+                          </p>
+                        </td>
+                        <td className="px-10 py-8 text-right">
+                          <div className="flex items-center justify-end space-x-3">
+                            {isEditing ? (
+                              <>
+                                <button
+                                  onClick={() => handleSaveWipEdit(item.id)}
+                                  className="p-2 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 border border-emerald-100 transition-all cursor-pointer flex items-center justify-center"
+                                  title="Save WIP Updates"
+                                >
+                                  <CheckCircle2 size={16} />
+                                </button>
+                                <button
+                                  onClick={() => setEditingWipId(null)}
+                                  className="p-2 bg-red-50 text-red-600 rounded-xl hover:bg-red-100 border border-red-100 transition-all cursor-pointer flex items-center justify-center"
+                                  title="Cancel Edit"
+                                >
+                                  <X size={16} />
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => handleStartEditWip(item)}
+                                  className="p-2 bg-blue-50 text-blue-605 rounded-xl hover:bg-blue-100 border border-blue-100 transition-all cursor-pointer flex items-center justify-center"
+                                  title="Edit WIP Run"
+                                >
+                                  <Edit size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteWip(item.id)}
+                                  className="p-2 bg-red-50 text-red-650 rounded-xl hover:bg-red-100 border border-red-100 transition-all cursor-pointer flex items-center justify-center"
+                                  title="Delete WIP Run"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              </>
+                            )}
+                            <button
+                              onClick={() => setSelectedWipCommitments(item)}
+                              title="View Material Commitments"
+                              className="p-3 bg-slate-50 text-slate-500 rounded-2xl hover:text-primary-600 hover:bg-primary-50 border border-slate-100 transition-all group-hover:border-primary-100 cursor-pointer hover:scale-105 active:scale-95 flex items-center justify-center"
+                            >
+                              <ArrowRight size={20} />
+                            </button>
                           </div>
-                        ) : (
-                          <div className="bg-primary-50 text-primary-600 border border-primary-100 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center w-fit">
-                            <div className="h-1.5 w-1.5 rounded-full bg-primary-600 animate-pulse mr-2"></div>
-                            {item.stage}
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-10 py-8 text-center text-2xl font-black text-slate-900 italic tracking-tighter">
-                        {item.qty}
-                      </td>
-                      <td className="px-10 py-8">
-                        <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest flex items-center">
-                          <History size={14} className="mr-2 text-slate-300" />{" "}
-                          {item.lastUpdate}
-                        </p>
-                      </td>
-                      <td className="px-10 py-8 text-right">
-                        <button
-                          onClick={() => setSelectedWipCommitments(item)}
-                          title="View Material Commitments"
-                          className="p-3 bg-slate-50 text-slate-500 rounded-2xl hover:text-primary-600 hover:bg-primary-50 border border-slate-100 transition-all group-hover:border-primary-100 cursor-pointer hover:scale-105 active:scale-95"
-                        >
-                          <ArrowRight size={20} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

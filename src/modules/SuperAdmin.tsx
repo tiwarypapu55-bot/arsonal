@@ -5,7 +5,7 @@ import {
   RefreshCw, FileText, CheckCircle2, Warehouse, Activity,
   Briefcase, Calendar, AlertTriangle, X, Check, Copy, 
   ExternalLink, Terminal, Wifi, WifiOff, Code, Play,
-  UserPlus, Trash2, Edit, Eye, EyeOff, UserCheck
+  UserPlus, Trash2, Edit, Eye, EyeOff, UserCheck, ChevronRight
 } from 'lucide-react';
 import { useERPData } from '../hooks/useERPData';
 import { cn } from '../lib/utils';
@@ -264,7 +264,7 @@ export const SuperAdmin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'profile' | 'system' | 'users'>('profile');
 
   // User credentials management states and hooks
-  const { usersList, addUser, updateUser, deleteUser, resetDefaultUsers } = useAuthStore();
+  const { usersList, addUser, updateUser, deleteUser, resetDefaultUsers, loginWithCredentials } = useAuthStore();
   const [userForm, setUserForm] = useState({
     name: '',
     email: '',
@@ -546,6 +546,17 @@ export const SuperAdmin: React.FC = () => {
 
     // Scroll to the top of the form
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleNodeSessionSwitch = (email: string, pass: string, name: string) => {
+    if (confirm(`Instantly switch active session to ${name} operator panel?`)) {
+      const res = loginWithCredentials(email, pass);
+      if (res.success) {
+        alert(`Session switched. Authenticated as ${name}.`);
+      } else {
+        alert(res.error || 'Handshake failed.');
+      }
+    }
   };
 
   return (
@@ -1970,10 +1981,9 @@ create policy "Allow public access to all records" on arcenol_corporate_units fo
                 )}
               </div>
             )}
-
-            <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-8">
-              {/* CURRENT USERS TABLE (Left columns) */}
-              <div className="lg:col-span-7 space-y-4">
+              <div className="space-y-8 mt-8">
+              {/* CURRENT USERS TABLE (Full width) */}
+              <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] font-mono">
                     Deployed Operators Database ({usersList.length})
@@ -1990,242 +2000,323 @@ create policy "Allow public access to all records" on arcenol_corporate_units fo
                         <tr className="border-b border-slate-100 bg-slate-50 text-[9px] font-black uppercase text-slate-400 tracking-wider">
                           <th className="p-4 pl-6">Operator Node / Role</th>
                           <th className="p-4">Authorization Email</th>
+                          <th className="p-4">Secure Portal Access URL</th>
                           <th className="p-4">Security Code</th>
                           <th className="p-4 text-right pr-6">Deploy Controls</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100/60 bg-white">
-                        {usersList.map((usr) => (
-                          <tr key={usr.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="p-4 pl-6">
-                              <p className="font-extrabold text-slate-900 text-xs">{usr.name}</p>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <span className={cn(
-                                  "text-[8px] font-black uppercase px-2 py-0.5 rounded-md font-mono tracking-wider shadow-xs",
-                                  usr.role === UserRole.SUPER_ADMIN ? "bg-primary-50 text-primary-600 border border-primary-200/40" :
-                                  usr.role === UserRole.ADMIN ? "bg-sky-50 text-sky-600 border border-sky-200/40" :
-                                  usr.role === UserRole.STORE_KEEPER ? "bg-amber-50 text-amber-600 border border-amber-200/40" :
-                                  "bg-slate-50 text-slate-600 border border-slate-200/35"
-                                )}>
-                                  {usr.role.replace('_', ' ')}
-                                </span>
-                                {usr.department && (
-                                  <span className="text-[8px] font-bold text-slate-400 font-mono">
-                                    [Dept: {usr.department}]
+                        {usersList.map((usr) => {
+                          const portalUrl = `${window.location.origin}/?portal=${encodeURIComponent(usr.email)}`;
+                          return (
+                            <tr key={usr.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="p-4 pl-6">
+                                <p className="font-extrabold text-slate-900 text-xs">{usr.name}</p>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                  <span className={cn(
+                                    "text-[8px] font-black uppercase px-2 py-0.5 rounded-md font-mono tracking-wider shadow-xs",
+                                    usr.role === UserRole.SUPER_ADMIN ? "bg-primary-50 text-primary-600 border border-primary-200/40" :
+                                    usr.role === UserRole.ADMIN ? "bg-sky-50 text-sky-600 border border-sky-200/40" :
+                                    usr.role === UserRole.STORE_KEEPER ? "bg-amber-50 text-amber-600 border border-amber-200/40" :
+                                    "bg-slate-50 text-slate-600 border border-slate-200/35"
+                                  )}>
+                                    {usr.role.replace('_', ' ')}
                                   </span>
-                                )}
-                              </div>
-                            </td>
-                            <td className="p-4">
-                              <span className="text-[11px] font-mono font-bold text-slate-600">{usr.email}</span>
-                            </td>
-                            <td className="p-4">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[11px] font-mono font-bold text-slate-800 tracking-tight bg-slate-50 p-1.5 rounded-lg border border-slate-100/50 min-w-[70px] text-center">
-                                  {revealedPasswords[usr.id] ? usr.password : '••••••••'}
-                                </span>
+                                  {usr.department && (
+                                    <span className="text-[8px] font-bold text-slate-400 font-mono">
+                                      [Dept: {usr.department}]
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <span className="text-[11px] font-mono font-bold text-slate-600">{usr.email}</span>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[10px] font-mono text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/50 max-w-[200px] truncate block" title={portalUrl}>
+                                    {portalUrl}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(portalUrl);
+                                      setUserSuccess(`Portal URL for ${usr.name} copied to clipboard!`);
+                                      setTimeout(() => setUserSuccess(''), 4000);
+                                    }}
+                                    className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-200"
+                                    title="Copy Secure Portal URL"
+                                  >
+                                    <Copy size={11} />
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="p-4">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-[11px] font-mono font-bold text-slate-800 tracking-tight bg-slate-50 p-1.5 rounded-lg border border-slate-100/50 min-w-[70px] text-center">
+                                    {revealedPasswords[usr.id] ? usr.password : '••••••••'}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => setRevealedPasswords(prev => ({ ...prev, [usr.id]: !prev[usr.id] }))}
+                                    className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-md"
+                                    title="Reveal/Hide Security Code"
+                                  >
+                                    {revealedPasswords[usr.id] ? <EyeOff size={12} /> : <Eye size={12} />}
+                                  </button>
+                                </div>
+                              </td>
+                              <td className="p-4 text-right pr-6 space-x-1.5">
                                 <button
                                   type="button"
-                                  onClick={() => setRevealedPasswords(prev => ({ ...prev, [usr.id]: !prev[usr.id] }))}
-                                  className="text-slate-400 hover:text-slate-700 transition-colors p-1 rounded-md"
-                                  title="Reveal/Hide Security Code"
+                                  onClick={() => {
+                                    setIsEditingUser(usr.id);
+                                    setUserForm({
+                                      name: usr.name,
+                                      email: usr.email,
+                                      password: usr.password || 'password123',
+                                      role: usr.role,
+                                      department: usr.department || ''
+                                    });
+                                    setUserSuccess('');
+                                    setUserErrors('');
+                                  }}
+                                  className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg inline-flex items-center border border-slate-100"
+                                  title="Edit operator"
+                                  id={`edit-usr-btn-${usr.id}`}
                                 >
-                                  {revealedPasswords[usr.id] ? <EyeOff size={12} /> : <Eye size={12} />}
+                                  <Edit size={11} />
                                 </button>
-                              </div>
-                            </td>
-                            <td className="p-4 text-right pr-6 space-x-1.5">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setIsEditingUser(usr.id);
-                                  setUserForm({
-                                    name: usr.name,
-                                    email: usr.email,
-                                    password: usr.password || 'password123',
-                                    role: usr.role,
-                                    department: usr.department || ''
-                                  });
-                                  setUserSuccess('');
-                                  setUserErrors('');
-                                }}
-                                className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-lg inline-flex items-center border border-slate-100"
-                                title="Edit operator"
-                                id={`edit-usr-btn-${usr.id}`}
-                              >
-                                <Edit size={11} />
-                              </button>
-                              <button
-                                type="button"
-                                disabled={usersList.length <= 1}
-                                onClick={() => {
-                                  if (confirm(`Are you absolutely sure you want to revoke permissions and delete ${usr.name}?`)) {
-                                    const res = deleteUser(usr.id);
-                                    if (res.success) {
-                                      setUserSuccess(`Operator clearances revoked and account deleted.`);
-                                      if (isEditingUser === usr.id) {
-                                        setIsEditingUser(null);
-                                        setUserForm({ name: '', email: '', password: '', role: 'QUALITY_TEAM' as UserRole, department: '' });
+                                <button
+                                  type="button"
+                                  disabled={usersList.length <= 1}
+                                  onClick={() => {
+                                    if (confirm(`Are you absolutely sure you want to revoke permissions and delete ${usr.name}?`)) {
+                                      const res = deleteUser(usr.id);
+                                      if (res.success) {
+                                        setUserSuccess(`Operator clearances revoked and account deleted.`);
+                                        if (isEditingUser === usr.id) {
+                                          setIsEditingUser(null);
+                                          setUserForm({ name: '', email: '', password: '', role: 'QUALITY_TEAM' as UserRole, department: '' });
+                                        }
+                                      } else {
+                                        setUserErrors(res.error || 'Failed to revoke permissions.');
                                       }
-                                    } else {
-                                      setUserErrors(res.error || 'Failed to revoke permissions.');
                                     }
-                                  }
-                                }}
-                                className="p-1.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-lg inline-flex items-center border border-red-100 disabled:opacity-40"
-                                title="Revoke permissions"
-                                id={`delete-usr-btn-${usr.id}`}
-                              >
-                                <Trash2 size={11} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
+                                  }}
+                                  className="p-1.5 bg-red-50 hover:bg-red-100 text-red-650 rounded-lg inline-flex items-center border border-red-100 disabled:opacity-40"
+                                  title="Revoke permissions"
+                                  id={`delete-usr-btn-${usr.id}`}
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
                 </div>
               </div>
 
-              {/* REGISTER / EDIT FORM (Right column) */}
-              <div className="lg:col-span-5">
-                <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6 space-y-5">
-                  <div className="flex items-center gap-2 border-b border-slate-100/80 pb-3">
-                    <UserPlus className="text-primary-650" size={16} />
-                    <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
-                      {isEditingUser ? 'Mutate Operator Clearance' : 'Deploy New Operator Account'}
-                    </h4>
-                  </div>
-
-                  <form 
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      setUserErrors('');
-                      setUserSuccess('');
-
-                      if (!userForm.name.trim() || !userForm.email.trim() || !userForm.password.trim()) {
-                        setUserErrors('Operator name, email, and security pass are required.');
-                        return;
-                      }
-
-                      if (isEditingUser) {
-                        const ok = updateUser(isEditingUser, userForm);
-                        if (ok) {
-                          setUserSuccess(`Operator ${userForm.name} updated successfully.`);
-                          setUserForm({ name: '', email: '', password: '', role: 'QUALITY_TEAM' as UserRole, department: '' });
-                          setIsEditingUser(null);
-                        } else {
-                          setUserErrors('Could not save changes. Email may already be associated with another operator node.');
-                        }
-                      } else {
-                        const registered = addUser(userForm);
-                        if (registered) {
-                          setUserSuccess(`Operator ${userForm.name} deployed. Registered to standard authentication.`);
-                          setUserForm({ name: '', email: '', password: '', role: 'QUALITY_TEAM' as UserRole, department: '' });
-                        } else {
-                          setUserErrors('The email address supplied is already bound to an active clearance profile.');
-                        }
-                      }
-                    }} 
-                    className="space-y-4"
+              {/* Lower Section split into Clearance Nodes & Register Form */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 pt-6 border-t border-slate-100">
+                {/* SYSTEM CONTROL CLEARANCE NODES (Shifted from login screen) */}
+                <div className="lg:col-span-7 space-y-4">
+                  <div 
+                    style={{ background: 'radial-gradient(circle at 50% 10%, #312e81 0%, #1e1b4b 100%)' }}
+                    className="border border-indigo-500/30 rounded-[2.5rem] p-6 md:p-8 shadow-2xl relative overflow-hidden backdrop-blur-md transition-all duration-300 animate-pulse-subtle"
                   >
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase text-slate-400 font-mono block">Operator Name</label>
-                      <input
-                        type="text"
-                        value={userForm.name}
-                        onChange={(e) => setUserForm(prev => ({ ...prev, name: e.target.value }))}
-                        placeholder="e.g. Richard Hendricks"
-                        required
-                        className="w-full bg-white border border-slate-200/70 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-primary-500/10 focus:border-primary-500"
-                        id="user-form-name-field"
-                      />
+                    <div className="absolute top-0 right-0 p-3.5 text-[9px] font-mono font-black text-indigo-200/50 tracking-normal select-none">
+                      ADMIN CLEARANCE MANAGEMENT HUB
                     </div>
 
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase text-slate-400 font-mono block">Node Contact Email (Login)</label>
-                      <input
-                        type="email"
-                        value={userForm.email}
-                        onChange={(e) => setUserForm(prev => ({ ...prev, email: e.target.value }))}
-                        placeholder="e.g. rich@arcenol.com"
-                        required
-                        className="w-full bg-white border border-slate-200/70 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-primary-500/10 focus:border-primary-500 font-mono"
-                        id="user-form-email-field"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-black uppercase text-slate-400 font-mono block">Clearance Security Code / Password</label>
-                      <input
-                        type="text"
-                        value={userForm.password}
-                        onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
-                        placeholder="e.g. dubaipassword55"
-                        required
-                        className="w-full bg-white border border-slate-200/70 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-primary-500/10 focus:border-primary-500 font-mono"
-                        id="user-form-pass-field"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-slate-400 font-mono block">Clearance Tier (Role)</label>
-                        <select
-                          value={userForm.role}
-                          onChange={(e) => setUserForm(prev => ({ ...prev, role: e.target.value as UserRole }))}
-                          className="w-full bg-white border border-slate-200/70 rounded-xl px-2.5 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500/10"
-                          id="user-form-role-select"
-                        >
-                          <option value={UserRole.SUPER_ADMIN}>Super Admin</option>
-                          <option value={UserRole.ADMIN}>Ops Admin</option>
-                          <option value={UserRole.STORE_KEEPER}>Inventory Logistics</option>
-                          <option value={UserRole.PRODUCTION_TEAM}>Manufacturing</option>
-                          <option value={UserRole.QUALITY_TEAM}>Quality Control</option>
-                          <option value={UserRole.SALES_PERSON}>Sales CRM</option>
-                          <option value={UserRole.BILLER}>Finance Hub</option>
-                          <option value={UserRole.WARRANTY_TEAM}>Warranty Team</option>
-                          <option value={UserRole.SERVICE_TEAM}>RMA Center</option>
-                          <option value={UserRole.PLANT_SERVICE_ENGINEER}>Plant Engineer</option>
-                        </select>
+                    <div className="flex items-center gap-3 mb-5 select-none">
+                      <div className="p-2 bg-white/10 text-sky-400 border border-white/20 rounded-xl shadow-inner animate-pulse">
+                        <Terminal size={16} />
                       </div>
+                      <div>
+                        <h3 className="text-sm font-black bg-clip-text text-transparent bg-gradient-to-r from-sky-400 via-emerald-400 to-indigo-300 uppercase tracking-widest font-mono">
+                          System Control Clearance Nodes
+                        </h3>
+                        <p className="text-[11px] text-indigo-100/90 font-bold leading-none mt-1">
+                          Dynamic operator shortcuts. Click any node to instantly switch sessions.
+                        </p>
+                      </div>
+                    </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 select-text">
+                      {usersList.map((usr) => {
+                        return (
+                           <button
+                            key={usr.id}
+                            type="button"
+                            onClick={() => handleNodeSessionSwitch(usr.email, usr.password || 'password123', usr.name)}
+                            className="text-left p-3.5 rounded-2xl border border-white/10 hover:border-white/30 cursor-pointer bg-white/5 hover:bg-white/10 text-xs font-mono transition-all space-y-2 relative group focus:outline-none focus:ring-2 focus:ring-indigo-300"
+                          >
+                            <div className="flex items-center justify-between pointer-events-none">
+                              <span className="text-[10px] font-black uppercase tracking-wider leading-none text-sky-400">
+                                {usr.name}
+                              </span>
+                              <span className="text-[8px] px-1.5 bg-white/10 border border-white/20 text-indigo-100 rounded">
+                                {usr.role.replace('_', ' ')}
+                              </span>
+                            </div>
+                            <div className="space-y-1 text-[10px] text-slate-300 font-semibold pointer-events-none">
+                              <div className="truncate text-slate-300/70">{usr.email}</div>
+                              <div className="flex items-center justify-between text-emerald-400 font-bold">
+                                <span>Key: <span className="text-amber-200 font-extrabold">{usr.password || 'password123'}</span></span>
+                                <ChevronRight size={11} className="text-slate-400 group-hover:translate-x-1 transition-transform" />
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* REGISTER / EDIT FORM */}
+                <div className="lg:col-span-5">
+                  <div className="bg-slate-50/50 border border-slate-100 rounded-[2rem] p-6 space-y-5">
+                    <div className="flex items-center gap-2 border-b border-slate-100/80 pb-3">
+                      <UserPlus className="text-primary-650" size={16} />
+                      <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                        {isEditingUser ? 'Mutate Operator Clearance' : 'Deploy New Operator Account'}
+                      </h4>
+                    </div>
+
+                    <form 
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        setUserErrors('');
+                        setUserSuccess('');
+
+                        if (!userForm.name.trim() || !userForm.email.trim() || !userForm.password.trim()) {
+                          setUserErrors('Operator name, email, and security pass are required.');
+                          return;
+                        }
+
+                        if (isEditingUser) {
+                          const ok = updateUser(isEditingUser, userForm);
+                          if (ok) {
+                            setUserSuccess(`Operator ${userForm.name} updated successfully.`);
+                            setUserForm({ name: '', email: '', password: '', role: 'QUALITY_TEAM' as UserRole, department: '' });
+                            setIsEditingUser(null);
+                          } else {
+                            setUserErrors('Could not save changes. Email may already be associated with another operator node.');
+                          }
+                        } else {
+                          const registered = addUser(userForm);
+                          if (registered) {
+                            setUserSuccess(`Operator ${userForm.name} deployed. Registered to standard authentication.`);
+                            setUserForm({ name: '', email: '', password: '', role: 'QUALITY_TEAM' as UserRole, department: '' });
+                          } else {
+                            setUserErrors('The email address supplied is already bound to an active clearance profile.');
+                          }
+                        }
+                      }} 
+                      className="space-y-4"
+                    >
                       <div className="space-y-1">
-                        <label className="text-[9px] font-black uppercase text-slate-400 font-mono block">Department</label>
+                        <label className="text-[9px] font-black uppercase text-slate-400 font-mono block">Operator Name</label>
                         <input
                           type="text"
-                          value={userForm.department}
-                          onChange={(e) => setUserForm(prev => ({ ...prev, department: e.target.value }))}
-                          placeholder="e.g. QC Hub"
+                          value={userForm.name}
+                          onChange={(e) => setUserForm(prev => ({ ...prev, name: e.target.value }))}
+                          placeholder="e.g. Richard Hendricks"
+                          required
                           className="w-full bg-white border border-slate-200/70 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-primary-500/10 focus:border-primary-500"
-                          id="user-form-dept-field"
+                          id="user-form-name-field"
                         />
                       </div>
-                    </div>
 
-                    <div className="pt-2 flex items-center gap-2">
-                      <button
-                        type="submit"
-                        className="flex-1 py-3 bg-primary-600 hover:brightness-110 active:scale-[0.98] text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-md shadow-primary-500/10"
-                        id="user-form-submit-btn"
-                      >
-                        {isEditingUser ? 'Commit Mutations' : 'Deploy Node Operator'}
-                      </button>
-                      {isEditingUser && (
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-slate-400 font-mono block">Node Contact Email (Login)</label>
+                        <input
+                          type="email"
+                          value={userForm.email}
+                          onChange={(e) => setUserForm(prev => ({ ...prev, email: e.target.value }))}
+                          placeholder="e.g. rich@arcenol.com"
+                          required
+                          className="w-full bg-white border border-slate-200/70 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-primary-500/10 focus:border-primary-500 font-mono"
+                          id="user-form-email-field"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-black uppercase text-slate-400 font-mono block">Clearance Security Code / Password</label>
+                        <input
+                          type="text"
+                          value={userForm.password}
+                          onChange={(e) => setUserForm(prev => ({ ...prev, password: e.target.value }))}
+                          placeholder="e.g. dubaipassword55"
+                          required
+                          className="w-full bg-white border border-slate-200/70 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-primary-500/10 focus:border-primary-500 font-mono"
+                          id="user-form-pass-field"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-400 font-mono block">Clearance Tier (Role)</label>
+                          <select
+                            value={userForm.role}
+                            onChange={(e) => setUserForm(prev => ({ ...prev, role: e.target.value as UserRole }))}
+                            className="w-full bg-white border border-slate-200/70 rounded-xl px-2.5 py-2.5 text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-primary-500/10"
+                            id="user-form-role-select"
+                          >
+                            <option value={UserRole.SUPER_ADMIN}>Super Admin</option>
+                            <option value={UserRole.ADMIN}>Ops Admin</option>
+                            <option value={UserRole.STORE_KEEPER}>Inventory Logistics</option>
+                            <option value={UserRole.PRODUCTION_TEAM}>Manufacturing</option>
+                            <option value={UserRole.QUALITY_TEAM}>Quality Control</option>
+                            <option value={UserRole.SALES_PERSON}>Sales CRM</option>
+                            <option value={UserRole.BILLER}>Finance Hub</option>
+                            <option value={UserRole.WARRANTY_TEAM}>Warranty Team</option>
+                            <option value={UserRole.SERVICE_TEAM}>RMA Center</option>
+                            <option value={UserRole.PLANT_SERVICE_ENGINEER}>Plant Engineer</option>
+                          </select>
+                        </div>
+
+                        <div className="space-y-1">
+                          <label className="text-[9px] font-black uppercase text-slate-400 font-mono block">Department</label>
+                          <input
+                            type="text"
+                            value={userForm.department}
+                            onChange={(e) => setUserForm(prev => ({ ...prev, department: e.target.value }))}
+                            placeholder="e.g. QC Hub"
+                            className="w-full bg-white border border-slate-200/70 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-primary-500/10 focus:border-primary-500"
+                            id="user-form-dept-field"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="pt-2 flex items-center gap-2">
                         <button
-                          type="button"
-                          onClick={() => {
-                            setIsEditingUser(null);
-                            setUserForm({ name: '', email: '', password: '', role: 'QUALITY_TEAM' as UserRole, department: '' });
-                          }}
-                          className="px-3 py-3 bg-slate-250 hover:bg-slate-300 text-slate-700 rounded-xl text-[9px] font-black uppercase tracking-widest"
-                          id="user-form-cancel-btn"
+                          type="submit"
+                          className="flex-1 py-3 bg-primary-600 hover:brightness-110 active:scale-[0.98] text-white rounded-xl text-[9px] font-black uppercase tracking-widest transition-all shadow-md shadow-primary-500/10"
+                          id="user-form-submit-btn"
                         >
-                          Cancel
+                          {isEditingUser ? 'Commit Mutations' : 'Deploy Node Operator'}
                         </button>
-                      )}
-                    </div>
-                  </form>
+                        {isEditingUser && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsEditingUser(null);
+                              setUserForm({ name: '', email: '', password: '', role: 'QUALITY_TEAM' as UserRole, department: '' });
+                            }}
+                            className="px-3 py-3 bg-slate-250 hover:bg-slate-300 text-slate-700 rounded-xl text-[9px] font-black uppercase tracking-widest"
+                            id="user-form-cancel-btn"
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </div>
+                    </form>
+                  </div>
                 </div>
               </div>
             </div>

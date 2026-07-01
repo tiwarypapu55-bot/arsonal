@@ -5,7 +5,7 @@ import {
   Activity, ShieldCheck, Zap, Layers, Microscope, QrCode, Trash2,
   Database, Boxes, Thermometer, Beaker, TrendingUp, Calendar, MapPin,
   ClipboardList, PackagePlus, Truck, RefreshCcw, LayoutDashboard,
-  Box, AlertCircle, Move, RotateCcw, X, Lock, Unlock, FileText, Sliders, Check
+  Box, AlertCircle, Move, RotateCcw, X, Lock, Unlock, FileText, Sliders, Check, Edit, Save
 } from 'lucide-react';
 import { useERPData } from '../hooks/useERPData';
 import { cn, formatCurrency } from '../lib/utils';
@@ -55,6 +55,56 @@ export const StoreKeeperDashboard: React.FC<{ activeTab?: string }> = ({ activeT
   });
   const [showCapacityMap, setShowCapacityMap] = useState(false);
   const [selectedCapacityWarehouse, setSelectedCapacityWarehouse] = useState<string>('');
+
+  // States for editing/deleting warehouses
+  const [editingWarehouseName, setEditingWarehouseName] = useState<string | null>(null);
+  const [editingWarehouseValue, setEditingWarehouseValue] = useState('');
+  const [isSavingWarehouse, setIsSavingWarehouse] = useState(false);
+
+  const handleEditWarehouse = (name: string) => {
+    setEditingWarehouseName(name);
+    setEditingWarehouseValue(name);
+  };
+
+  const handleSaveEditWarehouse = async (oldName: string) => {
+    if (!editingWarehouseValue.trim()) return;
+    setIsSavingWarehouse(true);
+    try {
+      const res = await fetch('/api/warehouses', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldName, newName: editingWarehouseValue.trim() })
+      });
+      if (res.ok) {
+        setEditingWarehouseName(null);
+        if (refetch) await refetch();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to update warehouse");
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsSavingWarehouse(false);
+    }
+  };
+
+  const handleDeleteWarehouse = async (name: string) => {
+    if (!confirm(`Are you sure you want to delete "${name}"? This will set its items to Unassigned.`)) return;
+    try {
+      const res = await fetch(`/api/warehouses/${encodeURIComponent(name)}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        if (refetch) await refetch();
+      } else {
+        const err = await res.json();
+        alert(err.error || "Failed to delete warehouse");
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   const handleAddWarehouse = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -464,15 +514,63 @@ export const StoreKeeperDashboard: React.FC<{ activeTab?: string }> = ({ activeT
                   </form>
                )}
                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {warehouseStock.map((wh, idx) => (
+                  {warehouseStock.map((wh, idx) => {
+                    const isEditing = editingWarehouseName === wh.name;
+                    return (
                     <div key={wh.name} className="p-7 rounded-[2.25rem] bg-slate-50/50 border border-slate-100 flex flex-col justify-between group hover:bg-white hover:border-[#edfbfc] hover:shadow-2xl hover:shadow-slate-200/40 transition-all">
                       <div className="flex items-center justify-between mb-4">
                          <div className="p-3 bg-[#ecfbfd] text-[#009dbb] rounded-xl shadow-xs transition-colors group-hover:bg-[#009dbb] group-hover:text-white">
                             <Warehouse size={18} />
                          </div>
-                         <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Node-0{idx+1}</span>
+                         <div className="flex items-center gap-2">
+                           <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest mr-1">Node-0{idx+1}</span>
+                           <button 
+                             type="button"
+                             onClick={() => handleEditWarehouse(wh.name)}
+                             className="p-1.5 text-slate-400 hover:text-[#0c9bbc] hover:bg-[#ecfbfd] rounded-lg transition-all cursor-pointer"
+                             title="Rename Warehouse"
+                             id={`edit-warehouse-${idx}`}
+                           >
+                             <Edit size={12} />
+                           </button>
+                           <button 
+                             type="button"
+                             onClick={() => handleDeleteWarehouse(wh.name)}
+                             className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all cursor-pointer"
+                             title="Delete Warehouse"
+                             id={`delete-warehouse-${idx}`}
+                           >
+                             <Trash2 size={12} />
+                           </button>
+                         </div>
                       </div>
-                      <p className="text-xl font-bold text-slate-900 mb-1 text-left">{wh.name}</p>
+                      {isEditing ? (
+                         <div className="flex items-center gap-2 mb-3">
+                            <input 
+                              type="text"
+                              className="flex-1 bg-white border border-slate-300 rounded-xl px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:ring-2 focus:ring-[#0c9bbc]/20 font-sans"
+                              value={editingWarehouseValue}
+                              onChange={e => setEditingWarehouseValue(e.target.value)}
+                            />
+                            <button 
+                              type="button"
+                              onClick={() => handleSaveEditWarehouse(wh.name)}
+                              className="p-2 text-emerald-600 bg-emerald-50 hover:bg-emerald-600 hover:text-white rounded-xl transition-all shadow-xs cursor-pointer"
+                              disabled={isSavingWarehouse}
+                            >
+                              <Check size={12} />
+                            </button>
+                            <button 
+                              type="button"
+                              onClick={() => setEditingWarehouseName(null)}
+                              className="p-2 text-slate-400 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all cursor-pointer"
+                            >
+                              <X size={12} />
+                            </button>
+                         </div>
+                      ) : (
+                         <p className="text-xl font-bold text-slate-900 mb-1 text-left">{wh.name}</p>
+                      )}
                       <div className="mt-4 border-t border-slate-100/65 pt-4 space-y-3">
                          <div className="flex justify-between items-center text-[10px] font-extrabold uppercase tracking-wider">
                             <span className="text-slate-400">Raw Valuation</span>
@@ -484,7 +582,8 @@ export const StoreKeeperDashboard: React.FC<{ activeTab?: string }> = ({ activeT
                          </div>
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                </div>
             </div>
 

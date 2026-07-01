@@ -192,6 +192,19 @@ export default function App() {
     }
   }, [user]);
 
+  // Dynamic portal url custom routing and greeting handler
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const portalEmail = params.get('portal');
+    if (portalEmail) {
+      const match = usersList.find(u => u.email.toLowerCase() === portalEmail.toLowerCase());
+      if (match) {
+        setEmail(match.email);
+        setSuccessMsg(`Welcome to the ${match.role.replace('_', ' ')} Portal.`);
+      }
+    }
+  }, [usersList]);
+
   if (!user) {
     if (showLandingPage) {
       return (
@@ -216,7 +229,7 @@ export default function App() {
         <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center justify-center relative z-10">
           
           {/* LEFT SECTION: Factory Background & Floating HUD Analytics & Credentials Registry */}
-          <div className="lg:col-span-7 flex flex-col justify-between h-full space-y-6 lg:space-y-8">
+          <div className="lg:col-span-7 flex flex-col justify-center space-y-6 lg:space-y-8">
             
             {/* Top Branding (Mobile-Only Header, hidden on Desktop since we have rich visual content) */}
             <div className="lg:hidden flex items-center justify-center gap-3 mb-2">
@@ -240,15 +253,15 @@ export default function App() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full">
                 {/* 1. Production Efficiency widget */}
                 <div 
-                  style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(254, 205, 211, 0.7) 100%)' }}
-                  className="flex items-center gap-3.5 border border-pink-200/50 px-4 py-3 rounded-2xl shadow-[0_8px_32px_rgba(159,18,57,0.06)] cursor-default select-none transition-all hover:border-pink-300 w-full"
+                  style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(204, 251, 241, 0.8) 100%)' }}
+                  className="flex items-center gap-3.5 border border-white/50 px-4 py-3 rounded-2xl shadow-[0_8px_32px_rgba(13,148,136,0.08)] cursor-default select-none transition-all hover:border-white w-full backdrop-blur-sm"
                 >
                   <div className="w-9 h-9 rounded-full bg-emerald-600/10 flex items-center justify-center text-emerald-800 border border-emerald-300/40 relative shrink-0">
                     <span className="absolute inset-0 rounded-full bg-emerald-400/30 animate-ping"></span>
                     <Activity size={16} />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[10px] text-rose-900/70 font-bold tracking-wide uppercase truncate">Efficiency</div>
+                    <div className="text-[10px] text-teal-950/70 font-bold tracking-wide uppercase truncate">Efficiency</div>
                     <div className="text-lg font-black text-slate-900 flex items-baseline gap-1.5 leading-none mt-0.5">
                       98%
                       <span className="text-[8px] text-emerald-700 font-extrabold tracking-widest uppercase hidden lg:inline">OPTL</span>
@@ -258,14 +271,14 @@ export default function App() {
 
                 {/* 2. Inventory Status widget */}
                 <div 
-                  style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(254, 205, 211, 0.7) 100%)' }}
-                  className="flex items-center gap-3.5 border border-pink-200/50 px-4 py-3 rounded-2xl shadow-[0_8px_32px_rgba(159,18,57,0.06)] cursor-default select-none transition-all hover:border-pink-300 w-full"
+                  style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(204, 251, 241, 0.8) 100%)' }}
+                  className="flex items-center gap-3.5 border border-white/50 px-4 py-3 rounded-2xl shadow-[0_8px_32px_rgba(13,148,136,0.08)] cursor-default select-none transition-all hover:border-white w-full backdrop-blur-sm"
                 >
                   <div className="w-9 h-9 rounded-full bg-blue-600/10 flex items-center justify-center text-blue-800 border border-blue-300/40 shrink-0">
                     <Cloud size={16} />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[10px] text-rose-900/70 font-bold tracking-wide uppercase truncate">Inventory</div>
+                    <div className="text-[10px] text-teal-950/70 font-bold tracking-wide uppercase truncate">Inventory</div>
                     <div className="text-lg font-black text-slate-900 flex items-baseline gap-1.5 leading-none mt-0.5">
                       Optimal
                       <span className="text-[8px] text-blue-700 font-extrabold tracking-widest uppercase hidden lg:inline">SYNC</span>
@@ -275,14 +288,14 @@ export default function App() {
 
                 {/* 3. Quality Passed widget */}
                 <div 
-                  style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(254, 205, 211, 0.7) 100%)' }}
-                  className="flex items-center gap-3.5 border border-pink-200/50 px-4 py-3 rounded-2xl shadow-[0_8px_32px_rgba(159,18,57,0.06)] cursor-default select-none transition-all hover:border-pink-300 w-full"
+                  style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(204, 251, 241, 0.8) 100%)' }}
+                  className="flex items-center gap-3.5 border border-white/50 px-4 py-3 rounded-2xl shadow-[0_8px_32px_rgba(13,148,136,0.08)] cursor-default select-none transition-all hover:border-white w-full backdrop-blur-sm"
                 >
                   <div className="w-9 h-9 rounded-full bg-teal-600/10 flex items-center justify-center text-teal-800 border border-teal-300/40 shrink-0">
                     <ShieldCheck size={16} />
                   </div>
                   <div className="min-w-0">
-                    <div className="text-[10px] text-rose-900/70 font-bold tracking-wide uppercase truncate">Quality</div>
+                    <div className="text-[10px] text-teal-950/70 font-bold tracking-wide uppercase truncate">Quality</div>
                     <div className="text-lg font-black text-slate-900 flex items-baseline gap-1.5 leading-none mt-0.5">
                       100%
                       <span className="text-[8px] text-teal-700 font-extrabold tracking-widest uppercase hidden lg:inline">CERT</span>
@@ -292,11 +305,11 @@ export default function App() {
 
                 {/* 4. Live Dashboard widget - beautifully aligned height with exact same padding */}
                 <div 
-                  style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.8) 0%, rgba(254, 205, 211, 0.7) 100%)' }}
-                  className="flex items-center gap-3.5 border border-pink-200/50 px-4 py-3 rounded-2xl shadow-[0_8px_32px_rgba(159,18,57,0.06)] cursor-default select-none transition-all hover:border-pink-300 w-full"
+                  style={{ background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(204, 251, 241, 0.8) 100%)' }}
+                  className="flex items-center gap-3.5 border border-white/50 px-4 py-3 rounded-2xl shadow-[0_8px_32px_rgba(13,148,136,0.08)] cursor-default select-none transition-all hover:border-white w-full backdrop-blur-sm"
                 >
                   <div className="flex flex-col gap-0.5 items-center justify-center shrink-0">
-                    <span className="text-[8px] text-rose-900/75 uppercase font-black tracking-widest leading-none mb-1">Live DB</span>
+                    <span className="text-[8px] text-teal-950/75 uppercase font-black tracking-widest leading-none mb-1">Live DB</span>
                     <div className="flex items-end gap-0.5 h-3">
                       <span className="w-1 bg-emerald-600 rounded-xs h-1 animate-pulse"></span>
                       <span className="w-1 bg-emerald-500 rounded-xs h-3 animate-pulse" style={{ animationDelay: '0.2s' }}></span>
@@ -304,8 +317,8 @@ export default function App() {
                       <span className="w-1 bg-emerald-700 rounded-xs h-2.5 animate-pulse" style={{ animationDelay: '0.1s' }}></span>
                     </div>
                   </div>
-                  <div className="border-l border-rose-300 pl-3 min-w-0">
-                    <div className="text-[9px] text-rose-900/60 leading-none font-bold uppercase tracking-widest truncate">Global Status</div>
+                  <div className="border-l border-teal-200/50 pl-3 min-w-0">
+                    <div className="text-[9px] text-teal-950/60 leading-none font-bold uppercase tracking-widest truncate">Global Status</div>
                     <div className="text-[11px] text-emerald-800 font-black tracking-wider uppercase mt-1 truncate">ONLINE</div>
                   </div>
                 </div>
@@ -313,7 +326,7 @@ export default function App() {
             </div>
 
             {/* Central Industrial Asset Window Wrapper */}
-            <div className="relative group rounded-3xl overflow-hidden border border-slate-800/80 shadow-[0_32px_64px_rgba(0,0,0,0.8)] bg-slate-950/50 aspect-[16/9] hidden min-[1140px]:block">
+            <div className="relative group rounded-3xl overflow-hidden border border-slate-800/80 shadow-[0_32px_64px_rgba(0,0,0,0.8)] bg-slate-950/50 aspect-[16/9] hidden lg:block">
               {/* Blur accent glow under asset container */}
               <div className="absolute -inset-2 bg-gradient-to-r from-blue-550/10 to-indigo-600/10 blur-3xl opacity-60 rounded-3xl group-hover:opacity-100 transition duration-700"></div>
               
@@ -344,85 +357,6 @@ export default function App() {
                 SYSTEM LOCKDOWN HANDSHAKE SECURED
               </div>
             </div>
-
-            {/* REQUISITION NODE / SYSTEM CLEARANCE PASSWORD HUB */}
-            <div 
-              style={{ background: 'radial-gradient(circle at 50% 10%, #ff4d79 0%, #e11d48 50%, #881337 100%)' }}
-              className="border border-rose-300/40 rounded-[2rem] p-6 md:p-8 shadow-2xl relative overflow-hidden backdrop-blur-md transform hover:scale-[1.01] transition-all duration-300"
-            >
-              <div className="absolute top-0 right-0 p-3.5 text-[9px] font-mono font-black text-rose-100/50 tracking-normal select-none">
-                AUTHORIZATION LEVEL 10
-              </div>
-
-              <div className="flex items-center gap-3 mb-5 select-none">
-                <div className="p-2 bg-white/10 text-[#fb923c] border border-white/20 rounded-xl shadow-inner animate-pulse">
-                  <Terminal size={16} />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black bg-clip-text text-transparent bg-gradient-to-r from-[#38bdf8] via-[#34d399] via-[#fbbf24] via-[#fb923c] to-[#f43f5e] uppercase tracking-widest font-mono">
-                    System Control Clearance Nodes
-                  </h3>
-                  <p className="text-[11px] text-rose-100/90 font-bold leading-none mt-1">
-                    Select a panel clearance payload below to autofill security keys instantly.
-                  </p>
-                </div>
-              </div>
-
-              {/* Full grid layout without scrollbars to view all clearance nodes at once */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 select-text">
-                {[
-                  { role: UserRole.SUPER_ADMIN, label: 'Super Admin', dept: 'HQ Command', email: 'admin@arcenol.com', pass: 'admin123', color: 'border-white/10 hover:border-white/40 cursor-pointer bg-white/10 hover:bg-white/20', text: 'text-[#38bdf8] font-black' },
-                  { role: UserRole.ADMIN, label: 'Ops Admin', dept: 'Central Registry', email: 'ops@arcenol.com', pass: 'password123', color: 'border-white/10 hover:border-white/40 cursor-pointer bg-white/10 hover:bg-white/20', text: 'text-[#34d399] font-black' },
-                  { role: UserRole.STORE_KEEPER, label: 'Logistics', dept: 'Warehouses', email: 'store@arcenol.com', pass: 'password123', color: 'border-white/10 hover:border-white/40 cursor-pointer bg-white/10 hover:bg-white/20', text: 'text-amber-200' },
-                  { role: UserRole.PRODUCTION_TEAM, label: 'Manufacturing', dept: 'MWh Assembly', email: 'production@arcenol.com', pass: 'password123', color: 'border-white/10 hover:border-white/40 cursor-pointer bg-white/10 hover:bg-white/20', text: 'text-emerald-200' },
-                  { role: UserRole.QUALITY_TEAM, label: 'Quality Hub', dept: 'Inspection', email: 'quality@arcenol.com', pass: 'password123', color: 'border-white/10 hover:border-white/40 cursor-pointer bg-white/10 hover:bg-white/20', text: 'text-indigo-200' },
-                  { role: UserRole.SALES_PERSON, label: 'Sales CRM', dept: 'Customer Gateways', email: 'sales@arcenol.com', pass: 'password123', color: 'border-white/10 hover:border-white/30 cursor-pointer bg-white/5 hover:bg-white/15', text: 'text-stone-200' },
-                  { role: UserRole.BILLER, label: 'Finance Biller', dept: 'GST Ledger', email: 'finance@arcenol.com', pass: 'password123', color: 'border-white/10 hover:border-white/40 cursor-pointer bg-white/10 hover:bg-white/20', text: 'text-purple-200' },
-                  { role: UserRole.WARRANTY_TEAM, label: 'Warranty claim', dept: 'Reclamations', email: 'warranty@arcenol.com', pass: 'password123', color: 'border-white/10 hover:border-white/40 cursor-pointer bg-white/10 hover:bg-white/20', text: 'text-red-200' },
-                  { role: UserRole.SERVICE_TEAM, label: 'RMA Center', dept: 'Replacements', email: 'service@arcenol.com', pass: 'password123', color: 'border-white/10 hover:border-white/35 cursor-pointer bg-white/10 hover:bg-white/20', text: 'text-orange-200' },
-                ].map((profile) => {
-                  return (
-                     <button
-                      key={profile.role}
-                      type="button"
-                      onClick={() => handleAutofillAndLogin({ email: profile.email, password: profile.pass, name: profile.label })}
-                      className={cn(
-                        "text-left p-3 rounded-2xl border text-xs font-mono transition-all space-y-1.5 relative group select-all focus:outline-none focus:ring-2 focus:ring-rose-300",
-                        profile.color
-                      )}
-                    >
-                      <div className="flex items-center justify-between pointer-events-none">
-                        <span className={cn("text-[9.5px] font-black uppercase tracking-wider leading-none", profile.text)}>
-                          {profile.label}
-                        </span>
-                        <span className="text-[8px] px-1.5 bg-white/10 border border-white/20 text-rose-50 rounded">
-                          {profile.dept}
-                        </span>
-                      </div>
-                      <div className="space-y-0.5 text-[10px] text-rose-100 font-semibold pointer-events-none">
-                        <div className="truncate text-rose-100/70">{profile.email}</div>
-                        <div className="flex items-center justify-between text-[#38bdf8] font-bold select-all">
-                          <span>Key: <span className="text-rose-250 font-extrabold">{profile.pass}</span></span>
-                          <ChevronRight size={11} className="text-rose-300 group-hover:translate-x-1 transition-transform" />
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Public Portal Shortcut button inside the HUD block */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/15 mt-5 pt-4 text-[10px]">
-                <span className="text-rose-50/80 font-bold tracking-tight">Need a simplified end-customer overview or static documentation?</span>
-                <button
-                  type="button"
-                  onClick={() => setShowLandingPage(true)}
-                  className="px-5 py-2.5 bg-white text-[#be123c] hover:bg-rose-50 active:scale-95 rounded-xl font-black uppercase tracking-wider transition duration-150 shrink-0 shadow-lg select-none"
-                >
-                  🌐 View Public Landing Page
-                </button>
-              </div>
-            </div>
             
           </div>
 
@@ -451,18 +385,41 @@ export default function App() {
                     </div>
                   </div>
 
-                  <h2 className="text-3xl font-black tracking-tight uppercase inline-flex items-center">
-                    <span className="text-[#be123c]">A</span>
-                    <span className="text-[#15803d]">r</span>
-                    <span className="text-[#0B1F3A]">cenol ERP</span>
-                  </h2>
-                  <div className="text-[10px] font-mono font-black text-[#0B1F3A]/80 tracking-[0.2em] uppercase mt-1">
-                    Powered by Digital Communique
-                  </div>
-
-                  <p className="text-[12.5px] font-bold text-[#0B1F3A] leading-relaxed max-w-[320px] mt-4 select-none">
-                    Comprehensive ERP for Battery Manufacturing, Inventory, CRM, Warranty & Analytics.
-                  </p>
+                  {(() => {
+                    const params = new URLSearchParams(window.location.search);
+                    const portalEmail = params.get('portal');
+                    const match = portalEmail ? usersList.find(u => u.email.toLowerCase() === portalEmail.toLowerCase()) : null;
+                    if (match) {
+                      return (
+                        <>
+                          <h2 className="text-2xl font-black tracking-tight uppercase inline-flex items-center text-[#0B1F3A] mt-2">
+                            {match.role.replace('_', ' ')} Portal
+                          </h2>
+                          <div className="text-[9px] font-mono font-black text-slate-500 tracking-[0.15em] uppercase mt-1">
+                            Secure Operator Clearance Node
+                          </div>
+                          <p className="text-xs font-semibold text-slate-600 leading-relaxed max-w-[320px] mt-3 select-none">
+                            Enter the authorization password for <span className="font-extrabold text-[#0B1F3A]">{match.name}</span> to access your dedicated workspace.
+                          </p>
+                        </>
+                      );
+                    }
+                    return (
+                      <>
+                        <h2 className="text-3xl font-black tracking-tight uppercase inline-flex items-center">
+                          <span className="text-[#be123c]">A</span>
+                          <span className="text-[#15803d]">r</span>
+                          <span className="text-[#0B1F3A]">cenol ERP</span>
+                        </h2>
+                        <div className="text-[10px] font-mono font-black text-[#0B1F3A]/80 tracking-[0.2em] uppercase mt-1">
+                          Powered by Digital Communique
+                        </div>
+                        <p className="text-[12.5px] font-bold text-[#0B1F3A] leading-relaxed max-w-[320px] mt-4 select-none">
+                          Comprehensive ERP for Battery Manufacturing, Inventory, CRM, Warranty & Analytics.
+                        </p>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 {/* Micro Alert messages */}
@@ -574,6 +531,14 @@ export default function App() {
                       className="w-full py-3 px-4 bg-[#0B1F3A] hover:bg-[#061528] active:scale-[0.98] rounded-xl text-xs font-bold tracking-wider transition-all duration-150 border border-slate-700/20 uppercase font-sans flex items-center justify-center text-white"
                     >
                       <span className="font-sans font-black tracking-widest text-[11px] text-white">Login with OTP</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setShowLandingPage(true)}
+                      className="w-full py-3 px-4 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] rounded-xl text-xs font-bold tracking-wider transition-all duration-150 border border-slate-250 uppercase font-sans flex items-center justify-center text-slate-800"
+                    >
+                      <span className="font-sans font-black tracking-widest text-[11px]">🌐 Public Landing Page</span>
                     </button>
                   </div>
                 </form>

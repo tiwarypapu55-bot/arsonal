@@ -953,6 +953,42 @@ async function startServer() {
     res.json({ success: true, warehouses: db.warehouses });
   });
 
+  app.put("/api/warehouses", (req, res) => {
+    const { oldName, newName } = req.body;
+    if (!oldName || !newName) return res.status(400).json({ error: "Both old and new names are required" });
+    const idx = db.warehouses.indexOf(oldName);
+    if (idx === -1) return res.status(404).json({ error: "Warehouse not found" });
+    if (db.warehouses.includes(newName) && oldName !== newName) {
+      return res.status(400).json({ error: "Warehouse already exists" });
+    }
+    db.warehouses[idx] = newName;
+    // Update occurrences in inventory
+    db.inventory.forEach(i => {
+      if (i.warehouse === oldName) i.warehouse = newName;
+    });
+    // Update occurrences in finished goods
+    db.finishedGoods.forEach(fg => {
+      if (fg.warehouse === oldName) fg.warehouse = newName;
+    });
+    res.json({ success: true, warehouses: db.warehouses });
+  });
+
+  app.delete("/api/warehouses/:name", (req, res) => {
+    const { name } = req.params;
+    const decodedName = decodeURIComponent(name);
+    const idx = db.warehouses.indexOf(decodedName);
+    if (idx === -1) return res.status(404).json({ error: "Warehouse not found" });
+    db.warehouses.splice(idx, 1);
+    // Reassign occurrences to "Unassigned" or a fallback warehouse
+    db.inventory.forEach(i => {
+      if (i.warehouse === decodedName) i.warehouse = "Unassigned";
+    });
+    db.finishedGoods.forEach(fg => {
+      if (fg.warehouse === decodedName) fg.warehouse = "Unassigned";
+    });
+    res.json({ success: true, warehouses: db.warehouses });
+  });
+
   app.post("/api/processing", (req, res) => {
     const { inputId, outputBatches, processingDegree } = req.body;
     const rawItem = db.inventory.find(i => i.id === inputId);
@@ -1194,6 +1230,17 @@ async function startServer() {
     }
   });
 
+  app.delete("/api/complaints/:id", (req, res) => {
+    const { id } = req.params;
+    const index = db.complaints.findIndex(c => c.id === id);
+    if (index !== -1) {
+      const deleted = db.complaints.splice(index, 1);
+      res.json({ success: true, deleted: deleted[0] });
+    } else {
+      res.status(404).json({ error: "Not found" });
+    }
+  });
+
   app.post("/api/cells/grade", (req, res) => {
     const { parentId, cellData } = req.body;
     const rawItem = db.inventory.find(i => i.id === parentId);
@@ -1213,6 +1260,32 @@ async function startServer() {
 
     db.gradedInventory.push(entry);
     res.json(entry);
+  });
+
+  app.put("/api/cells/grade/:id", (req, res) => {
+    const { id } = req.params;
+    const { cellData } = req.body;
+    const entryIndex = db.gradedInventory.findIndex(g => g.id === id);
+    if (entryIndex === -1) return res.status(404).json({ error: "Graded entry not found" });
+    db.gradedInventory[entryIndex] = {
+      ...db.gradedInventory[entryIndex],
+      ...cellData
+    };
+    res.json(db.gradedInventory[entryIndex]);
+  });
+
+  app.delete("/api/cells/grade/:id", (req, res) => {
+    const { id } = req.params;
+    const entryIndex = db.gradedInventory.findIndex(g => g.id === id);
+    if (entryIndex === -1) return res.status(404).json({ error: "Graded entry not found" });
+    const deleted = db.gradedInventory.splice(entryIndex, 1)[0] as any;
+    
+    // Add quantity back to raw stock
+    const rawItem = db.inventory.find(i => i.id === deleted.parentId);
+    if (rawItem) {
+      rawItem.qty += 1;
+    }
+    res.json({ success: true });
   });
 
   app.get("/api/production/wip", (req, res) => {
@@ -1272,6 +1345,38 @@ async function startServer() {
 
     db.wipInventory.push(wip);
     res.json(wip);
+  });
+
+  app.put("/api/production/wip/:id", (req, res) => {
+    const { id } = req.params;
+    const { name, qty, stage } = req.body;
+    const wip = db.wipInventory.find(w => w.id === id);
+    if (!wip) return res.status(404).json({ error: "WIP batch not found" });
+    
+    if (name) wip.name = name;
+    if (typeof qty !== 'undefined') wip.qty = Number(qty);
+    if (stage) wip.stage = stage;
+    wip.lastUpdate = new Date().toISOString().split('T')[0];
+    
+    res.json(wip);
+  });
+
+  app.delete("/api/production/wip/:id", (req, res) => {
+    const { id } = req.params;
+    const index = db.wipInventory.findIndex(w => w.id === id);
+    if (index === -1) return res.status(404).json({ error: "WIP batch not found" });
+    
+    const [deleted] = db.wipInventory.splice(index, 1);
+    
+    // Return components back to inventory on delete
+    if (deleted.components && Array.isArray(deleted.components)) {
+      deleted.components.forEach((comp: any) => {
+        const invItem = db.inventory.find(i => i.id === comp.matId);
+        if (invItem) invItem.qty += comp.qty;
+      });
+    }
+    
+    res.json({ success: true });
   });
 
   // --- DIRECT SYNC GATEWAY ENDPOINTS ---

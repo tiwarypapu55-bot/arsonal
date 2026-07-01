@@ -18,7 +18,8 @@ export const Service: React.FC = () => {
   const { data, loading, refetch } = useERPData();
   const [view, setView] = useState<'dashboard' | 'detail' | 'analytics' | 'diagnostic-commands'>('dashboard');
   const [selectedComplaint, setSelectedComplaint] = useState<any>(null);
-  const [updateForm, setUpdateForm] = useState({ stage: '', rootCause: '', notes: '', engineer: '' });
+  const [updateForm, setUpdateForm] = useState({ stage: '', rootCause: '', notes: '', engineer: '', serial: '', type: '', date: '' });
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -53,6 +54,9 @@ export const Service: React.FC = () => {
   );
 
   const complaints = data?.complaints || [];
+  const activeComplaint = selectedComplaint 
+    ? (complaints.find((c: any) => c.id === selectedComplaint.id) || selectedComplaint) 
+    : null;
   const engineers = data?.engineers || [];
   const failureCats = data?.failureCategories || [];
 
@@ -87,12 +91,12 @@ export const Service: React.FC = () => {
     const newLog = {
       id: `LOG-UPD-${Date.now()}`,
       nodeId: selectedComplaint.id,
-      serial: selectedComplaint.serial,
+      serial: updateForm.serial || selectedComplaint.serial,
       timestamp: timestampStr,
       stage: updateForm.stage,
       rootCause: updateForm.rootCause || 'Pending Scrutiny',
       notes: updateForm.notes || 'Status node updated with parameters.',
-      engineer: selectedComplaint.engineer || 'System Operator'
+      engineer: updateForm.engineer || selectedComplaint.engineer || 'System Operator'
     };
     const updated = [newLog, ...diagnosticLogs];
     setDiagnosticLogs(updated);
@@ -100,6 +104,17 @@ export const Service: React.FC = () => {
       localStorage.setItem('arcenol_diagnostic_logs', JSON.stringify(updated));
     }
 
+    setView('dashboard');
+    refetch();
+  };
+
+  const handleDelete = async () => {
+    if (!selectedComplaint) return;
+    await fetch(`/api/complaints/${selectedComplaint.id}`, {
+      method: 'DELETE'
+    });
+    setConfirmDelete(false);
+    setSelectedComplaint(null);
     setView('dashboard');
     refetch();
   };
@@ -373,7 +388,16 @@ export const Service: React.FC = () => {
                                     <button 
                                       onClick={() => { 
                                          setSelectedComplaint(c); 
-                                         setUpdateForm({ stage: c.stage, rootCause: c.rootCause || '', notes: c.notes, engineer: c.engineer }); 
+                                         setUpdateForm({ 
+                                            stage: c.stage, 
+                                            rootCause: c.rootCause || '', 
+                                            notes: c.notes || '', 
+                                            engineer: c.engineer || 'Unassigned',
+                                            serial: c.serial || '',
+                                            type: c.type || '',
+                                            date: c.date || ''
+                                         }); 
+                                         setConfirmDelete(false);
                                          setView('detail'); 
                                       }}
                                       className="inline-flex items-center space-x-2 px-5 py-2.5 bg-cyan-50 text-[#06b6d4] hover:bg-[#06b6d4] hover:text-white rounded-xl transition-all duration-300 font-black uppercase text-[10px] tracking-wider border border-cyan-100 cursor-pointer"
@@ -457,7 +481,11 @@ export const Service: React.FC = () => {
            </div>
         </div>
       ) : (
-        <div className="animate-in slide-in-from-right duration-500 space-y-12">
+        (() => {
+          const compToRender = activeComplaint || selectedComplaint;
+          if (!compToRender) return null;
+          return (
+            <div className="animate-in slide-in-from-right duration-500 space-y-12">
             <button 
               onClick={() => handleAction("Return to Monitor", () => setView('dashboard'))} 
               className="flex items-center text-slate-400 hover:text-slate-900 font-black text-[10px] uppercase tracking-[0.3em] transition-all bg-slate-50 px-6 py-2.5 rounded-xl border border-slate-100"
@@ -476,16 +504,16 @@ export const Service: React.FC = () => {
                         <div className="flex justify-between items-start mb-16">
                            <div>
                               <span className="text-[10px] font-black text-primary-600 uppercase tracking-[0.4em] italic block mb-3">Diagnostic Artifact Control Unit</span>
-                              <h3 className="text-6xl font-black text-slate-900 italic tracking-tighter leading-none">{selectedComplaint.id}</h3>
+                              <h3 className="text-6xl font-black text-slate-900 italic tracking-tighter leading-none">{compToRender.id}</h3>
                               <div className="flex items-center mt-6 space-x-6">
-                                 <p className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em] font-mono">SER_REF: {selectedComplaint.serial}</p>
+                                 <p className="text-[12px] font-black text-slate-400 uppercase tracking-[0.2em] font-mono">SER_REF: {compToRender.serial}</p>
                                  <span className="h-1 w-1 bg-slate-200 rounded-full"></span>
-                                 <p className="text-[12px] font-black text-primary-600 uppercase tracking-[0.2em] italic">{selectedComplaint.type}</p>
+                                 <p className="text-[12px] font-black text-primary-600 uppercase tracking-[0.2em] italic">{compToRender.type}</p>
                               </div>
                            </div>
                            <div className="text-right">
                               <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-2">Registration Dt.</p>
-                              <p className="text-2xl font-black text-slate-900 italic underline decoration-primary-500 decoration-2 underline-offset-8">{selectedComplaint.date}</p>
+                              <p className="text-2xl font-black text-slate-900 italic underline decoration-primary-500 decoration-2 underline-offset-8">{compToRender.date}</p>
                            </div>
                         </div>
 
@@ -493,7 +521,7 @@ export const Service: React.FC = () => {
                         <div className="flex items-center justify-between relative px-2 mb-12">
                            <div className="absolute h-0.5 w-full bg-slate-100 top-6 left-0"></div>
                            {data.serviceStages.map((stage: string, idx: number) => {
-                              const currentIdx = data.serviceStages.indexOf(selectedComplaint.stage);
+                              const currentIdx = data.serviceStages.indexOf(compToRender.stage);
                               const isCompleted = idx <= currentIdx;
                               const isCurrent = idx === currentIdx;
                               return (
@@ -526,13 +554,13 @@ export const Service: React.FC = () => {
                         <h4 className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em] mb-6 flex items-center">
                            <HelpCircle size={14} className="mr-2" /> Symptom Description
                         </h4>
-                        <p className="text-sm font-black text-slate-900 leading-relaxed italic group-hover:text-primary-600 transition-colors">"{selectedComplaint.notes}"</p>
+                        <p className="text-sm font-black text-slate-900 leading-relaxed italic group-hover:text-primary-600 transition-colors">"{compToRender.notes}"</p>
                      </div>
                      <div className="bg-primary-50/30 p-10 rounded-[3rem] border border-primary-100 border-dashed group shadow-lg shadow-slate-200/50">
                         <h4 className="text-[10px] font-black text-primary-600 uppercase tracking-[0.3em] mb-6 flex items-center">
                            <Settings size={14} className="mr-2" /> Engineering Observations
                         </h4>
-                        <p className="text-sm font-black text-slate-900 leading-relaxed italic">Technician {selectedComplaint.engineer} is actively scrutinizing the circuit matrix and cell chemistry for potential delta drift.</p>
+                        <p className="text-sm font-black text-slate-900 leading-relaxed italic">Technician {compToRender.engineer} is actively scrutinizing the circuit matrix and cell chemistry for potential delta drift.</p>
                      </div>
                   </div>
 
@@ -543,10 +571,10 @@ export const Service: React.FC = () => {
                            <h4 className="text-lg font-black text-slate-950 uppercase tracking-tight italic flex items-center">
                               <Terminal size={18} className="mr-2 text-[#06b6d4]" /> Diagnostic Command Historical Ledger
                            </h4>
-                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Audit log of system handshakes and manual overrides for {selectedComplaint.id}</p>
+                           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1">Audit log of system handshakes and manual overrides for {compToRender.id}</p>
                         </div>
                         <span className="bg-cyan-50 text-cyan-600 border border-cyan-100 px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest font-mono">
-                           {diagnosticLogs.filter(log => log.nodeId === selectedComplaint.id).length} Handshakes Logged
+                           {diagnosticLogs.filter(log => log.nodeId === compToRender.id).length} Handshakes Logged
                         </span>
                      </div>
 
@@ -561,7 +589,7 @@ export const Service: React.FC = () => {
                               </tr>
                            </thead>
                            <tbody className="divide-y divide-slate-100">
-                              {diagnosticLogs.filter(log => log.nodeId === selectedComplaint.id).length === 0 ? (
+                              {diagnosticLogs.filter(log => log.nodeId === compToRender.id).length === 0 ? (
                                  <tr>
                                     <td colSpan={4} className="px-6 py-10 text-center text-slate-400 font-bold uppercase tracking-widest">
                                        No diagnostic overrides committed yet. Current state represents registration baseline.
@@ -569,7 +597,7 @@ export const Service: React.FC = () => {
                                  </tr>
                               ) : (
                                  diagnosticLogs
-                                   .filter(log => log.nodeId === selectedComplaint.id)
+                                   .filter(log => log.nodeId === compToRender.id)
                                    .map((log: any) => (
                                       <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
                                          <td className="px-6 py-5">
@@ -601,49 +629,106 @@ export const Service: React.FC = () => {
                {/* Command Sidebar */}
                <div className="space-y-8">
                   <div className="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-2xl shadow-slate-200/40 sticky top-8">
-                     <h3 className="text-2xl font-extrabold text-[#0B1F3A] italic uppercase mb-10 tracking-tight font-sans">Diagnostic Command</h3>
-                     <div className="space-y-8">
-                        <div className="space-y-3">
-                           <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Operational Stage</label>
-                           <div className="relative">
-                              <select 
-                                 className="w-full bg-[#f8fafc] border border-slate-200 rounded-[1.25rem] px-6 py-4.5 text-xs font-extrabold text-slate-950 italic uppercase focus:ring-2 focus:ring-cyan-500 focus:bg-white outline-none transition-all cursor-pointer appearance-none relative pr-12"
-                                 value={updateForm.stage}
-                                 onChange={e => setUpdateForm({ ...updateForm, stage: e.target.value })}
-                              >
-                                 {data.serviceStages.map((s: string) => <option key={s} value={s} className="bg-white">{s.replace('_', ' ')}</option>)}
-                              </select>
-                              <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-slate-800">
-                                 <ChevronDown size={14} />
+                     <h3 className="text-2xl font-extrabold text-[#0B1F3A] italic uppercase mb-1 tracking-tight font-sans">Diagnostic Command</h3>
+                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-8">Update parameters or transition states</p>
+                     
+                     <div className="space-y-6">
+                        {/* --- Section A: Node Parameters (EDIT fields) --- */}
+                        <div className="p-6 bg-slate-50/70 rounded-3xl border border-slate-100 space-y-4">
+                           <p className="text-[9px] font-black text-[#06b6d4] uppercase tracking-widest block mb-1">Ticket Parameters</p>
+                           
+                           <div className="space-y-2">
+                              <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Serial Reference</label>
+                              <input 
+                                 type="text" 
+                                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-950 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                                 value={updateForm.serial}
+                                 onChange={e => setUpdateForm({ ...updateForm, serial: e.target.value })}
+                              />
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Issue Classification</label>
+                              <input 
+                                 type="text" 
+                                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-950 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                                 value={updateForm.type}
+                                 onChange={e => setUpdateForm({ ...updateForm, type: e.target.value })}
+                              />
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Registration Date</label>
+                              <input 
+                                 type="text" 
+                                 className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-mono font-bold text-slate-950 focus:ring-2 focus:ring-cyan-500 outline-none transition-all"
+                                 value={updateForm.date}
+                                 onChange={e => setUpdateForm({ ...updateForm, date: e.target.value })}
+                              />
+                           </div>
+
+                           <div className="space-y-2">
+                              <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-widest block">Assigned Engineer</label>
+                              <div className="relative">
+                                 <select 
+                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold text-slate-950 focus:ring-2 focus:ring-cyan-500 outline-none transition-all cursor-pointer appearance-none relative pr-10"
+                                    value={updateForm.engineer}
+                                    onChange={e => setUpdateForm({ ...updateForm, engineer: e.target.value })}
+                                 >
+                                    <option value="Unassigned">Unassigned</option>
+                                    {engineers.map((eng: any) => <option key={eng.id} value={eng.name}>{eng.name}</option>)}
+                                 </select>
+                                 <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none text-slate-500">
+                                    <ChevronDown size={14} />
+                                 </div>
                               </div>
                            </div>
                         </div>
 
-                        <div className="space-y-3 pb-8 border-b border-slate-100">
-                           <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Root Cause Matrix (RCA)</label>
-                           <div className="relative">
-                              <select 
-                                 className="w-full bg-[#f8fafc] border border-slate-200 rounded-[1.25rem] px-6 py-4.5 text-xs font-extrabold text-slate-950 italic uppercase focus:ring-2 focus:ring-cyan-500 focus:bg-white outline-none transition-all cursor-pointer appearance-none relative pr-12"
-                                 value={updateForm.rootCause}
-                                 onChange={e => setUpdateForm({ ...updateForm, rootCause: e.target.value })}
-                              >
-                                 <option value="" className="bg-white">PENDING SCRUTINY</option>
-                                 {failureCats.map((f: string) => <option key={f} value={f} className="bg-white">{f}</option>)}
-                              </select>
-                              <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-slate-800">
-                                 <ChevronDown size={14} />
+                        {/* --- Section B: Node State (Stage/RCA overrides) --- */}
+                        <div className="space-y-4 pt-2">
+                           <div className="space-y-3">
+                              <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Operational Stage</label>
+                              <div className="relative">
+                                 <select 
+                                    className="w-full bg-[#f8fafc] border border-slate-200 rounded-[1.25rem] px-6 py-4.5 text-xs font-extrabold text-slate-950 italic uppercase focus:ring-2 focus:ring-cyan-500 focus:bg-white outline-none transition-all cursor-pointer appearance-none relative pr-12"
+                                    value={updateForm.stage}
+                                    onChange={e => setUpdateForm({ ...updateForm, stage: e.target.value })}
+                                 >
+                                    {data.serviceStages.map((s: string) => <option key={s} value={s} className="bg-white">{s.replace('_', ' ')}</option>)}
+                                 </select>
+                                 <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-slate-800">
+                                    <ChevronDown size={14} />
+                                 </div>
                               </div>
                            </div>
-                        </div>
 
-                        <div className="space-y-3">
-                           <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Technical Field Notes</label>
-                           <textarea 
-                              className="w-full bg-[#f8fafc] border border-slate-200 rounded-[1.5rem] px-6 py-5 text-xs font-black text-slate-950 italic focus:ring-2 focus:ring-cyan-500 focus:bg-white outline-none transition-all h-36 resize-none placeholder:text-slate-300 font-sans tracking-wide leading-relaxed" 
-                              placeholder="Commit diagnostic observations..."
-                              value={updateForm.notes}
-                              onChange={e => setUpdateForm({ ...updateForm, notes: e.target.value })}
-                           />
+                           <div className="space-y-3 pb-4 border-b border-slate-100">
+                              <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Root Cause Matrix (RCA)</label>
+                              <div className="relative">
+                                 <select 
+                                    className="w-full bg-[#f8fafc] border border-slate-200 rounded-[1.25rem] px-6 py-4.5 text-xs font-extrabold text-slate-950 italic uppercase focus:ring-2 focus:ring-cyan-500 focus:bg-white outline-none transition-all cursor-pointer appearance-none relative pr-12"
+                                    value={updateForm.rootCause}
+                                    onChange={e => setUpdateForm({ ...updateForm, rootCause: e.target.value })}
+                                 >
+                                    <option value="" className="bg-white">PENDING SCRUTINY</option>
+                                    {failureCats.map((f: string) => <option key={f} value={f} className="bg-white">{f}</option>)}
+                                 </select>
+                                 <div className="absolute inset-y-0 right-5 flex items-center pointer-events-none text-slate-800">
+                                    <ChevronDown size={14} />
+                                 </div>
+                              </div>
+                           </div>
+
+                           <div className="space-y-3">
+                              <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest block">Technical Field Notes</label>
+                              <textarea 
+                                 className="w-full bg-[#f8fafc] border border-slate-200 rounded-[1.5rem] px-6 py-5 text-xs font-black text-slate-950 italic focus:ring-2 focus:ring-cyan-500 focus:bg-white outline-none transition-all h-36 resize-none placeholder:text-slate-300 font-sans tracking-wide leading-relaxed" 
+                                 placeholder="Commit diagnostic observations..."
+                                 value={updateForm.notes}
+                                 onChange={e => setUpdateForm({ ...updateForm, notes: e.target.value })}
+                              />
+                           </div>
                         </div>
 
                         <button 
@@ -653,6 +738,40 @@ export const Service: React.FC = () => {
                            <span>Update Node State</span>
                            <ChevronRight size={16} className="text-white mt-0.5" />
                         </button>
+
+                        {/* --- Section C: Danger Zone (DELETE functionality) --- */}
+                        <div className="pt-6 border-t border-slate-100 space-y-3">
+                           <label className="text-[10px] font-extrabold text-red-500 uppercase tracking-widest block">Danger Zone</label>
+                           {!confirmDelete ? (
+                              <button 
+                                 type="button"
+                                 onClick={() => setConfirmDelete(true)}
+                                 className="w-full bg-red-50 hover:bg-red-100 text-red-600 py-4 rounded-full font-extrabold uppercase text-[10px] tracking-[0.2em] transition-all flex items-center justify-center space-x-2 border border-red-200 cursor-pointer"
+                              >
+                                 <span>Delete Ticket Node</span>
+                              </button>
+                           ) : (
+                              <div className="space-y-2 p-4 bg-red-50/50 rounded-2xl border border-red-100">
+                                 <p className="text-[9px] font-black text-red-600 uppercase tracking-widest text-center">Are you absolutely sure?</p>
+                                 <div className="grid grid-cols-2 gap-2">
+                                    <button 
+                                       type="button"
+                                       onClick={handleDelete}
+                                       className="bg-red-600 hover:bg-red-700 text-white py-3 rounded-xl font-extrabold uppercase text-[9px] tracking-widest transition-all border-none cursor-pointer"
+                                    >
+                                       Confirm Delete
+                                    </button>
+                                    <button 
+                                       type="button"
+                                       onClick={() => setConfirmDelete(false)}
+                                       className="bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-extrabold uppercase text-[9px] tracking-widest transition-all border border-slate-200 cursor-pointer"
+                                    >
+                                       Cancel
+                                    </button>
+                                 </div>
+                              </div>
+                           )}
+                        </div>
                      </div>
                   </div>
 
@@ -667,7 +786,9 @@ export const Service: React.FC = () => {
                   </div>
                </div>
             </div>
-        </div>
+         </div>
+          );
+        })()
       )}
     </div>
   );
