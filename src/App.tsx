@@ -226,10 +226,10 @@ export default function App() {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#1d8c80_1px,transparent_1px),linear-gradient(to_bottom,#1d8c80_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-25"></div>
 
         {/* Outer Grid Layout */}
-        <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-center justify-center relative z-10">
+        <div className="max-w-7xl w-full grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch justify-center relative z-10">
           
           {/* LEFT SECTION: Factory Background & Floating HUD Analytics & Credentials Registry */}
-          <div className="lg:col-span-7 flex flex-col justify-center space-y-6 lg:space-y-8">
+          <div className="lg:col-span-7 flex flex-col justify-start space-y-6 h-full">
             
             {/* Top Branding (Mobile-Only Header, hidden on Desktop since we have rich visual content) */}
             <div className="lg:hidden flex items-center justify-center gap-3 mb-2">
@@ -326,7 +326,7 @@ export default function App() {
             </div>
 
             {/* Central Industrial Asset Window Wrapper */}
-            <div className="relative group rounded-3xl overflow-hidden border border-slate-800/80 shadow-[0_32px_64px_rgba(0,0,0,0.8)] bg-slate-950/50 aspect-[16/9] hidden lg:block">
+            <div className="relative group rounded-3xl overflow-hidden border border-slate-800/80 shadow-[0_32px_64px_rgba(0,0,0,0.8)] bg-slate-950/50 flex-1 min-h-[420px] hidden lg:flex lg:flex-col">
               {/* Blur accent glow under asset container */}
               <div className="absolute -inset-2 bg-gradient-to-r from-blue-550/10 to-indigo-600/10 blur-3xl opacity-60 rounded-3xl group-hover:opacity-100 transition duration-700"></div>
               
